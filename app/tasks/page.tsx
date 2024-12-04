@@ -4,27 +4,28 @@ import { useState } from 'react';
 import { useCRMStore } from '@/lib/store/store';
 import { CheckIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import TaskModal from '@/components/tasks/TaskModal';
-import { Task } from '@/lib/store/mockDb';
+import type { Task } from '@prisma/client';
+
+type TaskStatus = 'pending' | 'completed';
 
 export default function TasksPage() {
   const { tasks, updateTask, contacts, deals } = useCRMStore();
-  const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('all');
+  const [filter, setFilter] = useState<'all' | TaskStatus>('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedTask, setSelectedTask] = useState<Task | undefined>();
+  const [selectedTask, setSelectedTask] = useState<Task | undefined>(undefined);
 
   const filteredTasks = tasks.filter((task) => {
     if (filter === 'all') return true;
-    if (filter === 'pending') return task.status === 'pending';
-    return task.status === 'completed';
+    return task.status === filter;
   });
 
-  const getContactName = (contactId?: string) => {
+  const getContactName = (contactId: string | null) => {
     if (!contactId) return '';
     const contact = contacts.find((c) => c.id === contactId);
     return contact ? contact.name : '';
   };
 
-  const getDealTitle = (dealId?: string) => {
+  const getDealTitle = (dealId: string | null) => {
     if (!dealId) return '';
     const deal = deals.find((d) => d.id === dealId);
     return deal ? deal.title : '';
@@ -99,11 +100,6 @@ export default function TasksPage() {
                           for {getContactName(task.contactId)}
                         </p>
                       )}
-                      {task.dealId && (
-                        <p className="ml-1 flex-shrink-0 font-normal text-gray-500">
-                          ({getDealTitle(task.dealId)})
-                        </p>
-                      )}
                     </div>
                     <div className="mt-2">
                       <div className="flex items-center text-sm text-gray-500">
@@ -133,26 +129,21 @@ export default function TasksPage() {
                         onClick={(e) => {
                           e.stopPropagation();
                           updateTask(task.id, {
-                            status: task.status === 'completed' ? 'pending' : 'completed',
+                            status: task.status === 'completed' ? 'pending' : 'completed'
                           });
                         }}
-                        className={`inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md ${
+                        className={`inline-flex items-center rounded-md px-3 py-2 text-sm font-medium ${
                           task.status === 'completed'
-                            ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                            : 'bg-green-100 text-green-700 hover:bg-green-200'
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-yellow-100 text-yellow-800'
                         }`}
                       >
                         {task.status === 'completed' ? (
-                          <>
-                            <XMarkIcon className="h-4 w-4 mr-1" />
-                            Undo
-                          </>
+                          <CheckIcon className="mr-2 h-4 w-4" />
                         ) : (
-                          <>
-                            <CheckIcon className="h-4 w-4 mr-1" />
-                            Complete
-                          </>
+                          <XMarkIcon className="mr-2 h-4 w-4" />
                         )}
+                        {task.status === 'completed' ? 'Completed' : 'Pending'}
                       </button>
                     </div>
                   </div>

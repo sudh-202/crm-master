@@ -9,8 +9,9 @@ export default function ActivityWidget() {
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .slice(0, 5);
 
-  const getContactName = (contactId: string) => {
-    const contact = contacts.find(c => c.id === contactId);
+  const getContactName = (contactId: string | null): string => {
+    if (!contactId) return 'Unknown Contact';
+    const contact = contacts.find((c) => c.id === contactId);
     return contact ? contact.name : 'Unknown Contact';
   };
 

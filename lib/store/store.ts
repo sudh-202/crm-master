@@ -1,13 +1,20 @@
 import { create } from 'zustand';
 import type { Contact, Deal, Task, Activity } from '@prisma/client';
 
-// Extend the Prisma Contact type to ensure status is included
-type ExtendedContact = Contact & {
-  status: 'active' | 'inactive' | 'lead' | 'customer' | 'prospect';
+// Define valid status types
+type ContactStatus = 'active' | 'inactive' | 'lead' | 'customer' | 'prospect';
+
+// Ensure Contact type matches Prisma schema
+type ContactWithRelations = Contact & {
+  deals?: Deal[];
+  tasks?: Task[];
+  activities?: Activity[];
 };
 
+type DealStage = 'lead' | 'proposal' | 'negotiation' | 'closed';
+
 interface CRMStore {
-  contacts: ExtendedContact[];
+  contacts: ContactWithRelations[];
   deals: Deal[];
   tasks: Task[];
   activities: Activity[];
@@ -23,15 +30,15 @@ interface CRMStore {
   setSearchTerm: (term: string) => void;
   
   // Contact actions
-  addContact: (contact: Omit<ExtendedContact, 'id' | 'createdAt' | 'updatedAt' | 'lastContact'>) => Promise<void>;
-  updateContact: (id: string, contact: Partial<ExtendedContact>) => Promise<void>;
+  addContact: (contact: Omit<Contact, 'id' | 'createdAt' | 'updatedAt' | 'lastContact'>) => Promise<void>;
+  updateContact: (id: string, contact: Partial<Contact>) => Promise<void>;
   deleteContact: (id: string) => Promise<void>;
   
   // Deal actions
   addDeal: (deal: Omit<Deal, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   updateDeal: (id: string, deal: Partial<Deal>) => Promise<void>;
   deleteDeal: (id: string) => Promise<void>;
-  moveDeal: (id: string, newStage: string) => Promise<void>;
+  moveDeal: (id: string, newStage: DealStage) => Promise<void>;
   
   // Task actions
   addTask: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
@@ -100,7 +107,7 @@ export const useCRMStore = create<CRMStore>((set) => ({
         throw new Error('Contact ID is required');
       }
 
-      const response = await fetch(`/api/contacts/${id}`, {
+      const response = await fetch(`/api/contacts?id=${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -133,7 +140,7 @@ export const useCRMStore = create<CRMStore>((set) => ({
   },
   
   deleteContact: async (id) => {
-    await fetch(`/api/contacts/${id}`, {
+    await fetch(`/api/contacts?id=${id}`, {
       method: 'DELETE',
     });
     set((state) => ({
@@ -155,7 +162,7 @@ export const useCRMStore = create<CRMStore>((set) => ({
   },
   
   updateDeal: async (id, deal) => {
-    const response = await fetch(`/api/deals/${id}`, {
+    const response = await fetch(`/api/deals?id=${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(deal),
@@ -169,7 +176,7 @@ export const useCRMStore = create<CRMStore>((set) => ({
   },
   
   deleteDeal: async (id) => {
-    await fetch(`/api/deals/${id}`, {
+    await fetch(`/api/deals?id=${id}`, {
       method: 'DELETE',
     });
     set((state) => ({
@@ -178,7 +185,7 @@ export const useCRMStore = create<CRMStore>((set) => ({
   },
   
   moveDeal: async (id, newStage) => {
-    const response = await fetch(`/api/deals/${id}`, {
+    const response = await fetch(`/api/deals?id=${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ stage: newStage }),
@@ -205,7 +212,7 @@ export const useCRMStore = create<CRMStore>((set) => ({
   },
   
   updateTask: async (id, task) => {
-    const response = await fetch(`/api/tasks/${id}`, {
+    const response = await fetch(`/api/tasks?id=${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(task),
@@ -219,7 +226,7 @@ export const useCRMStore = create<CRMStore>((set) => ({
   },
   
   deleteTask: async (id) => {
-    await fetch(`/api/tasks/${id}`, {
+    await fetch(`/api/tasks?id=${id}`, {
       method: 'DELETE',
     });
     set((state) => ({
@@ -228,8 +235,8 @@ export const useCRMStore = create<CRMStore>((set) => ({
   },
   
   toggleTaskStatus: async (id) => {
-    const task = await fetch(`/api/tasks/${id}`).then((r) => r.json());
-    const response = await fetch(`/api/tasks/${id}`, {
+    const task = await fetch(`/api/tasks?id=${id}`).then((r) => r.json());
+    const response = await fetch(`/api/tasks?id=${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -258,7 +265,7 @@ export const useCRMStore = create<CRMStore>((set) => ({
   },
   
   updateActivity: async (id, activity) => {
-    const response = await fetch(`/api/activities/${id}`, {
+    const response = await fetch(`/api/activities?id=${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(activity),
@@ -272,7 +279,7 @@ export const useCRMStore = create<CRMStore>((set) => ({
   },
   
   deleteActivity: async (id) => {
-    await fetch(`/api/activities/${id}`, {
+    await fetch(`/api/activities?id=${id}`, {
       method: 'DELETE',
     });
     set((state) => ({

@@ -1,177 +1,82 @@
-'use client';
-
-import { Fragment, useState } from 'react';
-import { Dialog, Transition } from '@headlessui/react';
+import { useState, useEffect } from 'react';
 import { useCRMStore } from '@/lib/store/store';
-import { XCircleIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon } from '@heroicons/react/24/outline';
+import type { Contact } from '@prisma/client';
 
-type StatusType = 'active' | 'inactive' | 'lead' | 'customer' | 'prospect';
+type ContactStatus = 'active' | 'inactive' | 'lead' | 'customer' | 'prospect';
 
 interface EditStatusModalProps {
   isOpen: boolean;
   onClose: () => void;
-  contactId: string;
-  currentStatus: string;
+  contact: Contact | null;
 }
 
-const statusOptions: { value: StatusType; label: string; bgColor: string; textColor: string }[] = [
-  { value: 'active', label: 'Active', bgColor: 'bg-green-100', textColor: 'text-green-800' },
-  { value: 'inactive', label: 'Inactive', bgColor: 'bg-red-100', textColor: 'text-red-800' },
-  { value: 'lead', label: 'Lead', bgColor: 'bg-yellow-100', textColor: 'text-yellow-800' },
-  { value: 'customer', label: 'Customer', bgColor: 'bg-blue-100', textColor: 'text-blue-800' },
-  { value: 'prospect', label: 'Prospect', bgColor: 'bg-gray-100', textColor: 'text-gray-800' }
-];
-
-export default function EditStatusModal({
-  isOpen,
-  onClose,
-  contactId,
-  currentStatus,
-}: EditStatusModalProps) {
+export default function EditStatusModal({ isOpen, onClose, contact }: EditStatusModalProps) {
   const { updateContact } = useCRMStore();
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [updatingStatus, setUpdatingStatus] = useState<StatusType | null>(null);
+  const [status, setStatus] = useState<ContactStatus>('active');
 
-  const handleStatusChange = async (newStatus: StatusType) => {
-    if (!contactId) {
-      setError('Contact ID is missing');
-      return;
+  useEffect(() => {
+    if (contact) {
+      setStatus(contact.status as ContactStatus);
     }
+  }, [contact]);
 
-    if (newStatus === currentStatus) {
-      onClose();
-      return;
-    }
-
-    console.log('Attempting to update status:', { contactId, currentStatus, newStatus });
-    setIsLoading(true);
-    setError(null);
-    setUpdatingStatus(newStatus);
-
-    try {
-      const result = await updateContact(contactId, { 
-        status: newStatus 
-      });
-      console.log('Status update result:', result);
-      onClose();
-    } catch (err) {
-      console.error('Error updating status:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to update contact status. Please try again.';
-      setError(errorMessage);
-    } finally {
-      setIsLoading(false);
-      setUpdatingStatus(null);
-    }
-  };
-
-  const handleClose = () => {
-    if (!isLoading) {
-      setError(null);
-      setUpdatingStatus(null);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (contact) {
+      await updateContact(contact.id, { status });
       onClose();
     }
   };
 
-  // Validate current status
-  const validStatus = statusOptions.find(option => option.value === currentStatus) 
-    ? currentStatus as StatusType 
-    : 'active';
+  if (!isOpen) return null;
 
   return (
-    <Transition appear show={isOpen} as={Fragment}>
-      <Dialog as="div" className="relative z-10" onClose={handleClose}>
-        <Transition.Child
-          as={Fragment}
-          enter="ease-out duration-300"
-          enterFrom="opacity-0"
-          enterTo="opacity-100"
-          leave="ease-in duration-200"
-          leaveFrom="opacity-100"
-          leaveTo="opacity-0"
-        >
-          <div className="fixed inset-0 bg-black/25 backdrop-blur-sm" />
-        </Transition.Child>
-
-        <div className="fixed inset-0 overflow-y-auto">
-          <div className="flex min-h-full items-center justify-center p-4 text-center">
-            <Transition.Child
-              as={Fragment}
-              enter="ease-out duration-300"
-              enterFrom="opacity-0 scale-95"
-              enterTo="opacity-100 scale-100"
-              leave="ease-in duration-200"
-              leaveFrom="opacity-100 scale-100"
-              leaveTo="opacity-0 scale-95"
-            >
-              <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
-                <Dialog.Title
-                  as="h3"
-                  className="text-lg font-medium leading-6 text-gray-900"
-                >
-                  Update Contact Status
-                </Dialog.Title>
-
-                {error && (
-                  <div className="mt-4 p-4 bg-red-50 rounded-md">
-                    <div className="flex">
-                      <div className="flex-shrink-0">
-                        <XCircleIcon className="h-5 w-5 text-red-400" aria-hidden="true" />
-                      </div>
-                      <div className="ml-3">
-                        <p className="text-sm text-red-700">{error}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <div className="mt-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    {statusOptions.map((status) => {
-                      const isUpdating = isLoading && updatingStatus === status.value;
-                      const isSelected = status.value === validStatus;
-                      return (
-                        <button
-                          key={status.value}
-                          onClick={() => !isLoading && handleStatusChange(status.value)}
-                          disabled={isLoading}
-                          className={`relative px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 
-                            ${isSelected
-                              ? `${status.bgColor} ${status.textColor} ring-2 ring-offset-2 ring-${status.textColor.replace('text-', '')}`
-                              : 'bg-gray-100 text-gray-900 hover:bg-gray-200'
-                            } ${isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-md'}`}
-                        >
-                          {status.label}
-                          {isUpdating && (
-                            <div className="absolute inset-0 flex items-center justify-center bg-white/50 rounded-md">
-                              <div className="w-5 h-5 border-2 border-gray-500 border-t-transparent rounded-full animate-spin" />
-                            </div>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="mt-6 flex justify-end">
-                  <button
-                    type="button"
-                    className={`inline-flex justify-center rounded-md border border-transparent bg-gray-100 
-                      px-4 py-2 text-sm font-medium text-gray-900 hover:bg-gray-200 
-                      focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2
-                      transition-all duration-200
-                      ${isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-md'}`}
-                    onClick={handleClose}
-                    disabled={isLoading}
-                  >
-                    {isLoading ? 'Updating...' : 'Cancel'}
-                  </button>
-                </div>
-              </Dialog.Panel>
-            </Transition.Child>
-          </div>
+    <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4">
+      <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold">Update Status</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-500">
+            <XMarkIcon className="h-6 w-6" />
+          </button>
         </div>
-      </Dialog>
-    </Transition>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label htmlFor="status" className="block text-sm font-medium text-gray-700">
+              Status
+            </label>
+            <select
+              id="status"
+              value={status}
+              onChange={(e) => setStatus(e.target.value as ContactStatus)}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+            >
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+              <option value="lead">Lead</option>
+              <option value="customer">Customer</option>
+              <option value="prospect">Prospect</option>
+            </select>
+          </div>
+
+          <div className="flex justify-end space-x-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              Save Changes
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 }

@@ -6,7 +6,9 @@ import { MagnifyingGlassIcon, PlusIcon, PencilIcon, TrashIcon } from '@heroicons
 import AddContactModal from '@/components/contacts/AddContactModal';
 import EditContactModal from '@/components/contacts/EditContactModal';
 import EditStatusModal from '@/components/contacts/EditStatusModal';
-import type { Contact } from '@/lib/store/mockDb';
+import type { Contact } from '@prisma/client';
+
+type ContactStatus = 'active' | 'inactive' | 'lead' | 'customer' | 'prospect';
 
 export default function ContactsPage() {
   const { contacts, deleteContact } = useCRMStore();
@@ -15,7 +17,7 @@ export default function ContactsPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<ContactStatus | 'all'>('all');
   const [sortBy, setSortBy] = useState<'name' | 'company' | 'lastContact'>('name');
 
   const filteredContacts = contacts
@@ -31,7 +33,9 @@ export default function ContactsPage() {
     })
     .sort((a, b) => {
       if (sortBy === 'lastContact') {
-        return new Date(b.lastContact).getTime() - new Date(a.lastContact).getTime();
+        const dateA = a.lastContact ? new Date(a.lastContact).getTime() : 0;
+        const dateB = b.lastContact ? new Date(b.lastContact).getTime() : 0;
+        return dateB - dateA;
       }
       if (sortBy === 'company') {
         return (a.company || '').localeCompare(b.company || '');
@@ -39,8 +43,13 @@ export default function ContactsPage() {
       return a.name.localeCompare(b.name);
     });
 
-  const handleEdit = (contact: Contact) => {
-    setSelectedContact(contact);
+  const handleStatusClick = (contact: Contact) => {
+    setSelectedContact({ ...contact });
+    setIsStatusModalOpen(true);
+  };
+
+  const handleEditClick = (contact: Contact) => {
+    setSelectedContact({ ...contact });
     setIsEditModalOpen(true);
   };
 
@@ -80,13 +89,15 @@ export default function ContactsPage() {
         <div className="flex space-x-4">
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(e) => setStatusFilter(e.target.value as ContactStatus | 'all')}
             className="block w-40 py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
           >
             <option value="all">All Status</option>
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
             <option value="lead">Lead</option>
+            <option value="customer">Customer</option>
+            <option value="prospect">Prospect</option>
           </select>
 
           <select
@@ -126,10 +137,7 @@ export default function ContactsPage() {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <button
-                    onClick={() => {
-                      setSelectedContact(contact);
-                      setIsStatusModalOpen(true);
-                    }}
+                    onClick={() => handleStatusClick(contact)}
                     className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                       contact.status === 'active'
                         ? 'bg-green-100 text-green-800'
@@ -139,6 +147,8 @@ export default function ContactsPage() {
                         ? 'bg-yellow-100 text-yellow-800'
                         : contact.status === 'customer'
                         ? 'bg-blue-100 text-blue-800'
+                        : contact.status === 'prospect'
+                        ? 'bg-purple-100 text-purple-800'
                         : 'bg-gray-100 text-gray-800'
                     }`}
                   >
@@ -147,7 +157,7 @@ export default function ContactsPage() {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   <button
-                    onClick={() => handleEdit(contact)}
+                    onClick={() => handleEditClick(contact)}
                     className="text-indigo-600 hover:text-indigo-900 mr-4"
                   >
                     <PencilIcon className="h-5 w-5" />
@@ -186,8 +196,7 @@ export default function ContactsPage() {
               setIsStatusModalOpen(false);
               setSelectedContact(null);
             }}
-            contactId={selectedContact.id}
-            currentStatus={selectedContact.status || ''}
+            contact={selectedContact}
           />
         </>
       )}

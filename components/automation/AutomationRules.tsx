@@ -1,17 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AutomationRule, TriggerType, ActionType } from '@/lib/automation/types';
 import { automationEngine } from '@/lib/automation/automationEngine';
 
-export default function AutomationPage() {
-  const [rules, setRules] = useState<AutomationRule[]>(() => {
-    if (typeof window !== 'undefined') {
-      const savedRules = localStorage.getItem('automationRules');
-      return savedRules ? JSON.parse(savedRules) : automationEngine.getRules();
-    }
-    return automationEngine.getRules();
-  });
+export default function AutomationRules() {
+  const [rules, setRules] = useState<AutomationRule[]>([]);
   const [showNewRule, setShowNewRule] = useState(false);
   const [newRule, setNewRule] = useState<Partial<AutomationRule>>({
     name: '',
@@ -23,6 +17,35 @@ export default function AutomationPage() {
     },
     actions: [],
   });
+
+  const [initialized, setInitialized] = useState(false);
+
+  useEffect(() => {
+    // Only run on client side
+    if (typeof window !== 'undefined' && !initialized) {
+      const savedRulesStr = localStorage.getItem('automationRules');
+      let loadedRules: AutomationRule[] = [];
+      
+      if (savedRulesStr) {
+        try {
+          loadedRules = JSON.parse(savedRulesStr);
+        } catch (e) {
+          console.error('Failed to parse saved rules:', e);
+        }
+      }
+
+      setRules(loadedRules);
+      loadedRules.forEach(rule => automationEngine.addRule(rule));
+      setInitialized(true);
+    }
+  }, [initialized]);
+
+  useEffect(() => {
+    // Only save rules after initialization
+    if (initialized && typeof window !== 'undefined') {
+      localStorage.setItem('automationRules', JSON.stringify(rules));
+    }
+  }, [rules, initialized]);
 
   const triggerTypes: TriggerType[] = [
     'task_due',
@@ -41,8 +64,8 @@ export default function AutomationPage() {
 
   const handleSaveRule = () => {
     if (newRule.name && newRule.trigger && newRule.actions) {
-      const savedRule = automationEngine.addRule(newRule as Omit<AutomationRule, 'id' | 'createdAt' | 'updatedAt'>);
-      setRules(automationEngine.getRules());
+      const savedRule = automationEngine.addRule(newRule as AutomationRule);
+      setRules([...rules, savedRule]);
       setShowNewRule(false);
       setNewRule({
         name: '',
@@ -54,26 +77,22 @@ export default function AutomationPage() {
         },
         actions: [],
       });
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('automationRules', JSON.stringify(automationEngine.getRules()));
+    }
+  };
+
+  const handleDeleteRule = (ruleId: string) => {
+    automationEngine.deleteRule(ruleId);
+    setRules(rules.filter(r => r.id !== ruleId));
+  };
+
+  const handleToggleRule = (ruleId: string) => {
+    const updatedRules = rules.map(rule => {
+      if (rule.id === ruleId) {
+        return { ...rule, isActive: !rule.isActive };
       }
-    }
-  };
-
-  const handleDeleteRule = (id: string) => {
-    automationEngine.deleteRule(id);
-    setRules(automationEngine.getRules());
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('automationRules', JSON.stringify(automationEngine.getRules()));
-    }
-  };
-
-  const handleToggleRule = (id: string, isActive: boolean) => {
-    automationEngine.updateRule(id, { isActive });
-    setRules(automationEngine.getRules());
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('automationRules', JSON.stringify(automationEngine.getRules()));
-    }
+      return rule;
+    });
+    setRules(updatedRules);
   };
 
   return (
@@ -99,7 +118,7 @@ export default function AutomationPage() {
               <h3 className="text-lg font-medium">{rule.name}</h3>
               <div className="flex space-x-2">
                 <button
-                  onClick={() => handleToggleRule(rule.id, !rule.isActive)}
+                  onClick={() => handleToggleRule(rule.id)}
                   className={`px-3 py-1 rounded ${
                     rule.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
                   }`}
@@ -166,7 +185,7 @@ export default function AutomationPage() {
                 >
                   {triggerTypes.map(type => (
                     <option key={type} value={type}>
-                      {type.replace(/_/g, ' ').toUpperCase()}
+                      {type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
                     </option>
                   ))}
                 </select>
@@ -191,7 +210,7 @@ export default function AutomationPage() {
                       >
                         {actionTypes.map(type => (
                           <option key={type} value={type}>
-                            {type.replace(/_/g, ' ').toUpperCase()}
+                            {type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
                           </option>
                         ))}
                       </select>

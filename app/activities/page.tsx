@@ -1,48 +1,51 @@
 'use client';
 
+import { Activity } from '@prisma/client';
 import { useState } from 'react';
 import { useCRMStore } from '@/lib/store/store';
 import { PlusIcon, PhoneIcon, EnvelopeIcon, CalendarIcon } from '@heroicons/react/24/outline';
-import { Activity } from '@/lib/store/mockDb';
 
-const activityIcons = {
-  call: PhoneIcon,
+type ActivityType = 'email' | 'call' | 'meeting';
+
+const activityIcons: Record<ActivityType, typeof PhoneIcon> = {
   email: EnvelopeIcon,
+  call: PhoneIcon,
   meeting: CalendarIcon,
 };
 
-const activityColors = {
-  call: 'text-blue-600',
+const activityColors: Record<ActivityType, string> = {
   email: 'text-purple-600',
+  call: 'text-blue-600',
   meeting: 'text-green-600',
 };
 
 export default function ActivitiesPage() {
   const { activities, contacts, deals, addActivity } = useCRMStore();
-  const [filter, setFilter] = useState<Activity['type'] | 'all'>('all');
+  const [filter, setFilter] = useState<ActivityType | 'all'>('all');
 
   const filteredActivities = activities.filter((activity) =>
     filter === 'all' ? true : activity.type === filter
   );
 
-  const getContactName = (contactId: string) => {
+  const getContactName = (contactId: string | null) => {
+    if (!contactId) return '';
     const contact = contacts.find((c) => c.id === contactId);
     return contact ? contact.name : '';
   };
 
-  const getDealTitle = (dealId?: string) => {
+  const getDealTitle = (dealId: string | null) => {
     if (!dealId) return '';
     const deal = deals.find((d) => d.id === dealId);
     return deal ? deal.title : '';
   };
 
-  const handleAddActivity = (type: Activity['type']) => {
+  const handleAddActivity = (type: ActivityType) => {
     const newActivity = {
       type,
       description: '',
-      date: new Date().toISOString(),
-      contactId: contacts[0]?.id || '',
-      dealId: deals[0]?.id,
+      date: new Date(),
+      contactId: contacts[0]?.id ?? null,
+      dealId: deals[0]?.id ?? null,
     };
     addActivity(newActivity);
   };
@@ -122,8 +125,8 @@ export default function ActivitiesPage() {
       <div className="bg-white shadow overflow-hidden sm:rounded-lg">
         <ul className="divide-y divide-gray-200">
           {filteredActivities.map((activity) => {
-            const Icon = activityIcons[activity.type];
-            const colorClass = activityColors[activity.type];
+            const Icon = activityIcons[activity.type as ActivityType];
+            const colorClass = activityColors[activity.type as ActivityType];
             return (
               <li key={activity.id} className="px-4 py-4 sm:px-6">
                 <div className="flex items-center justify-between">

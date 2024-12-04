@@ -1,7 +1,11 @@
-import { Fragment, useEffect, useState } from 'react';
+'use client';
+
+import { Fragment, useState, useEffect } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { useCRMStore } from '@/lib/store/store';
-import { Deal } from '@/lib/store/mockDb';
+import type { Deal } from '@prisma/client';
+
+type DealStage = 'lead' | 'proposal' | 'negotiation' | 'closed';
 
 interface DealModalProps {
   isOpen: boolean;
@@ -11,12 +15,16 @@ interface DealModalProps {
 
 export default function DealModal({ isOpen, onClose, deal }: DealModalProps) {
   const { contacts, addDeal, updateDeal } = useCRMStore();
-  const [formData, setFormData] = useState<Pick<Deal, 'title' | 'value' | 'stage' | 'contactId' | 'description'>>({
+  const [formData, setFormData] = useState<{
+    title: string;
+    value: number;
+    stage: string;
+    contactId: string;
+  }>({
     title: '',
     value: 0,
-    stage: 'lead' as Deal['stage'],
+    stage: 'lead',
     contactId: '',
-    description: '',
   });
 
   useEffect(() => {
@@ -24,19 +32,30 @@ export default function DealModal({ isOpen, onClose, deal }: DealModalProps) {
       setFormData({
         title: deal.title,
         value: deal.value,
-        stage: deal.stage,
-        contactId: deal.contactId || '',
-        description: deal.description || '',
+        stage: deal.stage as DealStage,
+        contactId: deal.contactId ?? '',
+      });
+    } else {
+      setFormData({
+        title: '',
+        value: 0,
+        stage: 'lead',
+        contactId: '',
       });
     }
   }, [deal]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const submitData = {
+      ...formData,
+      contactId: formData.contactId || null,
+    };
+    
     if (deal) {
-      updateDeal(deal.id, formData);
+      await updateDeal(deal.id, submitData);
     } else {
-      addDeal(formData);
+      await addDeal(submitData);
     }
     onClose();
   };
@@ -140,7 +159,7 @@ export default function DealModal({ isOpen, onClose, deal }: DealModalProps) {
                           onChange={(e) =>
                             setFormData({
                               ...formData,
-                              stage: e.target.value as Deal['stage'],
+                              stage: e.target.value as DealStage,
                             })
                           }
                         >
@@ -169,33 +188,11 @@ export default function DealModal({ isOpen, onClose, deal }: DealModalProps) {
                         >
                           <option value="">Select a contact</option>
                           {contacts.map((contact) => (
-                            <option key={contact.id} value={contact.id}>
+                            <option key={contact.id} value={contact.id.toString()}>
                               {contact.name}
                             </option>
                           ))}
                         </select>
-                      </div>
-
-                      <div>
-                        <label
-                          htmlFor="description"
-                          className="block text-sm font-medium text-gray-700"
-                        >
-                          Description
-                        </label>
-                        <textarea
-                          id="description"
-                          name="description"
-                          rows={3}
-                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                          value={formData.description}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              description: e.target.value,
-                            })
-                          }
-                        />
                       </div>
 
                       <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">

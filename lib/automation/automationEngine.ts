@@ -12,6 +12,7 @@ class AutomationEngine {
   }
 
   private loadRules() {
+    if (typeof window === 'undefined') return;
     const savedRules = localStorage.getItem('automation_rules');
     if (savedRules) {
       this.rules = JSON.parse(savedRules);
@@ -19,10 +20,12 @@ class AutomationEngine {
   }
 
   private saveRules() {
+    if (typeof window === 'undefined') return;
     localStorage.setItem('automation_rules', JSON.stringify(this.rules));
   }
 
   private initializeEventListeners() {
+    if (typeof window === 'undefined') return;
     // Check for due tasks every minute
     setInterval(() => this.checkDueTasks(), 60000);
     
@@ -45,7 +48,7 @@ class AutomationEngine {
           dueDate: this.calculateDueDate(action.params.dueDays),
           status: 'pending',
           contactId: context.contactId,
-          dealId: context.dealId,
+          priority: 'medium',
         });
         break;
 
@@ -84,10 +87,10 @@ class AutomationEngine {
     return template.replace(/\{\{(\w+)\}\}/g, (_, key) => context[key] || '');
   }
 
-  private calculateDueDate(daysFromNow: number): string {
+  private calculateDueDate(daysFromNow: number): Date {
     const date = new Date();
     date.setDate(date.getDate() + daysFromNow);
-    return date.toISOString();
+    return date;
   }
 
   private checkDueTasks() {
@@ -107,7 +110,7 @@ class AutomationEngine {
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
     store.contacts.forEach(contact => {
-      if (new Date(contact.lastContact) < thirtyDaysAgo) {
+      if (contact.lastContact && new Date(contact.lastContact) < thirtyDaysAgo) {
         this.processTrigger('contact_inactive', { contact });
       }
     });
@@ -161,20 +164,18 @@ class AutomationEngine {
     return newRule;
   }
 
-  public updateRule(id: string, updates: Partial<AutomationRule>) {
-    const index = this.rules.findIndex(rule => rule.id === id);
-    if (index !== -1) {
-      this.rules[index] = {
-        ...this.rules[index],
-        ...updates,
-        updatedAt: new Date().toISOString(),
-      };
-      this.saveRules();
-    }
+  public deleteRule(ruleId: string) {
+    this.rules = this.rules.filter(rule => rule.id !== ruleId);
+    this.saveRules();
   }
 
-  public deleteRule(id: string) {
-    this.rules = this.rules.filter(rule => rule.id !== id);
+  public updateRule(ruleId: string, updates: Partial<AutomationRule>) {
+    this.rules = this.rules.map(rule => {
+      if (rule.id === ruleId) {
+        return { ...rule, ...updates, updatedAt: new Date().toISOString() };
+      }
+      return rule;
+    });
     this.saveRules();
   }
 

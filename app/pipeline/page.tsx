@@ -5,19 +5,20 @@ import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautif
 import { PlusIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { useCRMStore } from '@/lib/store/store';
 import DealModal from '@/components/pipeline/DealModal';
-import type { Deal } from '@/lib/store/mockDb';
+import type { Deal } from '@prisma/client';
 import AnalyticsDashboard from '@/components/analytics/AnalyticsDashboard';
 
-const stages = ['lead', 'proposal', 'negotiation', 'closed'] as const;
+type DealStage = 'lead' | 'proposal' | 'negotiation' | 'closed';
+const stages: DealStage[] = ['lead', 'proposal', 'negotiation', 'closed'];
 
-const stageNames = {
+const stageNames: Record<DealStage, string> = {
   lead: 'Leads',
   proposal: 'Proposals',
   negotiation: 'Negotiation',
   closed: 'Closed Deals',
 };
 
-const stageColors = {
+const stageColors: Record<DealStage, string> = {
   lead: 'bg-gray-100',
   proposal: 'bg-blue-50',
   negotiation: 'bg-yellow-50',
@@ -44,7 +45,7 @@ export default function PipelinePage() {
       return;
     }
 
-    const newStage = destination.droppableId as Deal['stage'];
+    const newStage = destination.droppableId as DealStage;
     moveDeal(draggableId, newStage);
   };
 
@@ -55,7 +56,7 @@ export default function PipelinePage() {
   const dealsByStage = stages.reduce((acc, stage) => {
     acc[stage] = filteredDeals.filter((deal) => deal.stage === stage);
     return acc;
-  }, {} as Record<Deal['stage'], Deal[]>);
+  }, {} as Record<DealStage, Deal[]>);
 
   const getTotalValue = (deals: Deal[]) =>
     deals.reduce((sum, deal) => sum + deal.value, 0);
