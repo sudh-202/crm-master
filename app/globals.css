@@ -1,0 +1,88 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary-color: #3b82f6;
+  --secondary-color: #64748b;
+  --accent-color: #0ea5e9;
+  --bg-primary: #ffffff;
+  --bg-secondary: #f3f4f6;
+  --text-primary: #111827;
+  --text-secondary: #4b5563;
+}
+
+.dark {
+  --primary-color: #60a5fa;
+  --secondary-color: #94a3b8;
+  --accent-color: #38bdf8;
+  --bg-primary: #111827;
+  --bg-secondary: #1f2937;
+  --text-primary: #f9fafb;
+  --text-secondary: #e5e7eb;
+}
+
+body {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+/* Theme styles */
+.theme-default {
+  --theme-primary: #4f46e5;
+  --theme-secondary: #6b7280;
+  --theme-accent: #3b82f6;
+}
+
+.theme-ocean {
+  --theme-primary: #2563eb;
+  --theme-secondary: #64748b;
+  --theme-accent: #06b6d4;
+}
+
+.theme-forest {
+  --theme-primary: #059669;
+  --theme-secondary: #78716c;
+  --theme-accent: #22c55e;
+}
+
+.theme-sunset {
+  --theme-primary: #f97316;
+  --theme-secondary: #71717a;
+  --theme-accent: #f59e0b;
+}
+
+.bg-theme-primary {
+  background-color: var(--theme-primary);
+  color: white;
+}
+
+.bg-theme-secondary {
+  background-color: var(--theme-secondary);
+  color: white;
+}
+
+.text-theme-primary {
+  color: var(--theme-primary);
+}
+
+.text-theme-secondary {
+  color: var(--theme-secondary);
+}
+
+.btn-primary {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: var(--primary-hover);
+}
+
+.border-theme {
+  border-color: var(--secondary-color);
+}
+
+* {
+  transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+}
